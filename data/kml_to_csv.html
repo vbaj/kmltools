@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>kml_to_csv</title>
+    <link rel="stylesheet" type="text/css" href="page.css" />
+    <script type="text/javascript" src="utils.js"></script>
+    <script type="text/javascript">
+        // DOM's window load is used to associate functionality to elements.
+        window.addEventListener("load", function(){
+            utils.el("open").addEventListener("click", function(){ utils.el("file").click();     }, false); // File open
+            utils.el("save").addEventListener("click", function(){ utils.el("filesave").click(); }, false); // File save
+            utils.el("file").addEventListener("change", function(){ // On file open
+                var kml = utils.el("kmlfile");
+                    kml.value = utils.el("file").value;
+                var csv = utils.el("csvfile");
+                if(utils.isWin()){
+                    // Default file save as Excel with same name at same path.
+                    if(!csv.value) csv.value = kml.value.replace(/\.kml$/i, ".xlsx");
+                } else {
+                    // Default file save as CSV with same name at same path.
+                    if(!csv.value) csv.value = kml.value.replace(/\.kml$/i, ".csv");
+                }
+            }, false);
+            utils.el("filesave").addEventListener("change", function(){ // On file save
+                utils.el("csvfile").value = utils.el("filesave").value;
+            }, false);
+            utils.el("process").addEventListener("click", function(){ // Actual conversion.
+                if(test()){ // Checks for true before actual conversion.
+                    var lines = utils.KMLToArray(utils.el("kmlfile").value); // Convert to Array
+                    var csv = utils.el("csvfile").value;
+                    if(csv.match(/\.xls$|\.xlsx$/i)){
+                        csv = csv.replace(/\.xls$|\.xlsx$/i, ".csv");
+                        utils.ArrayToCSV(csv, lines); // Write temporary CSV
+                        // Create Excel file from CSV
+                        utils.run("WScript.exe", [process.cwd() + "\\data\\csv_xlsx.js", "/xl", csv]);
+                        // Remove temporary CSV.
+                        utils.remove(csv);
+                    } else {
+                        utils.ArrayToCSV(csv, lines); // Write CSV
+                    }
+                    utils.open(utils.el("csvfile").value); // Open Excel or CSV
+                }
+            }, false);
+        }, false);
+
+        function test(){ // Test if go-ahead is right?
+            var kml = utils.el("kmlfile");
+            if(kml.value == ""){
+                alert("Please select a KML file to convert.");
+                return false;
+            }
+            var csv = utils.el("csvfile");
+            if(csv.value == ""){
+                alert("Please select a CSV file to generate.");
+                return false;
+            }
+            if(!csv.value.match(/\.csv$|\.xls$|\.xlsx$/i)){
+                if(utils.isWin()) csv.value += ".xlsx";
+                else csv.value += ".csv";
+            }
+            return true;
+        }
+    </script>
+</head>
+
+<body>
+<h1 id="title">KML to CSV</h1>
+
+<table>
+    <tr>
+        <td width="100">KML File</td>
+        <td>:</td>
+        <td><input type="text" size="40" id="kmlfile" /></td>
+        <td><input type="button" id="open" value="Browse" class="stitched" /></td>
+    </tr>
+    <tr>
+        <td>CSV File</td>
+        <td>:</td>
+        <td><input type="text" size="40" id="csvfile" /></td>
+        <td><input type="button" id="save" value="Browse" class="stitched" /></td>
+    </tr>
+    <tr>
+        <td class="noborder"></td>
+        <td class="noborder"></td>
+        <td class="noborder"></td>
+        <td class="noborder"><input type="button" id="process" value="Convert" class="stitched" /></td>
+    </tr>
+</table>
+
+<div class="hidden">
+    <input type="file" id="file" accept=".kml" />
+    <input type="file" id="filesave" nwsaveas />
+</div>
+
+</body>
+</html>

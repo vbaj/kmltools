@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSV to KML</title>
+    <link rel="stylesheet" type="text/css" href="page.css" />
+    <script type="text/javascript" src="utils.js"></script>
+    <script type="text/javascript">
+        var lines = [];   // Array to hold lines from CSV dump.
+        var kmlcols = {}; // Object to hold selected columns for KML.
+        // DOM's window load is used to associate functionality to elements.
+        window.addEventListener("load", function(){
+            if(utils.isWin()){ // if running on Windows platform
+                utils.el("file").accept = ".csv,.xls,.xlsx"
+            };
+            kmlcols = utils.KMLCols(); // {name, lon, lat, height, eyealt} eyealt translates to LOD
+            utils.el("open").addEventListener("click", function(){ utils.el("file").click();     }, false); // File open.
+            utils.el("save").addEventListener("click", function(){ utils.el("filesave").click(); }, false); // File save.
+            utils.el("file").addEventListener("change", function(){ // On file open.
+                var csv = utils.el("csvfile");
+                    csv.value = utils.el("file").value;
+                var kml = utils.el("kmlfile");
+                // Default file save as KML with same name at same path.
+                if(!kml.value) kml.value = csv.value.replace(/\.csv$|\.xls$|\.xlsx$/i, ".kml");
+                if(csv.value.match(/\.xls$|\.xlsx$/)){
+                    // Create CSV from Excel file.
+                    utils.run("WScript.exe", [process.cwd() + "\\data\\csv_xlsx.js", "/csv", csv.value]);
+                    // Read CSV and return data in two-dimensional array.
+                    lines = utils.CSVToArray(csv.value + ".csv");
+                    // Remove temporary CSV.
+                    utils.remove(csv.value + ".csv");
+                } else {
+                    // Read CSV and return data in two-dimensional array.
+                    lines = utils.CSVToArray(csv.value);
+                }
+                var list = utils.el("collist"); // List column headers.
+                while(list.length > 0) list.remove(0); // Remove any previous columns.
+                for(var i = 0; i < lines[0].length; i++){ // Add current columns.
+                    var option = utils.tag("option");
+                        option.value = lines[0][i];
+                    if(lines[0][i].match(/^name/i)){ // Match name for 'Place Name'.
+                        utils.el("name").value = lines[0][i];
+                        kmlcols.name = i;
+                    }
+                    if(lines[0][i].match(/^lat/i) || lines[0][i].match(/^y$/i)){ // Match 'lat' or 'y' for 'Latitude'
+                        utils.el("lat").value = lines[0][i];
+                        kmlcols.lat = i;
+                    }
+                    if(lines[0][i].match(/^lon/i) || lines[0][i].match(/^x$/i)){ // Match 'lon' or 'x' for 'Longitude'
+                        utils.el("lon").value = lines[0][i];
+                        kmlcols.lon = i;
+                    }
+                    if(lines[0][i].match(/^height/i) || lines[0][i].match(/^ht$/i)){ // Match 'height' or 'ht' for 'Height'
+                        utils.el("height").value = lines[0][i];
+                        kmlcols.height = i;
+                    }
+                    if(lines[0][i].match(/^eye\s*alt/i)){ // Match for 'EyeAlt'
+                        utils.el("eyealt").value = lines[0][i];
+                        kmlcols.eyealt = i;
+                    }
+                    if(lines[0][i].length > 60){ // Trim display text if longer than 60 chars.
+                        var left  = lines[0][i].substring(0, 7);
+                        var right = lines[0][i].substring(lines[0][i].length - 50);
+                        option.text = left + "..." + right;
+                    } else option.text  = lines[0][i];
+                    list.appendChild(option);
+                }
+            }, false);
+            utils.el("filesave").addEventListener("change", function(){ // On file save.
+                utils.el("kmlfile").value = utils.el("filesave").value;
+            }, false);
+            utils.el("process").addEventListener("click", function(){ // Actual conversion.
+                if(test()){ // Checks for true before actual conversion.
+                    var kml = utils.ArrayToKML( // Convert to KML
+                        lines,
+                        kmlcols,
+                        utils.el("path").checked,
+                        utils.el("distances").checked,
+                        utils.el("flatten").checked,
+                        utils.el("attributes").checked
+                    );
+                    utils.SerializeKML(kml, utils.el("kmlfile").value); // Write KML
+                    utils.open(utils.el("kmlfile").value); // Open in Earth Browser
+                }
+            }, false);
+            // These listeners allow to select non-standard column names for intended purpose.
+            utils.el("btn_name"  ).addEventListener("click", function(){ btnClick("btn_name");   }, false);
+            utils.el("btn_lat"   ).addEventListener("click", function(){ btnClick("btn_lat");    }, false);
+            utils.el("btn_lon"   ).addEventListener("click", function(){ btnClick("btn_lon");    }, false);
+            utils.el("btn_height").addEventListener("click", function(){ btnClick("btn_height"); }, false);
+            utils.el("btn_eyealt").addEventListener("click", function(){ btnClick("btn_eyealt"); }, false);
+        }, false);
+
+        function btnClick(btnId){ // Enables selection of a column for its intended purpose.
+            var list = utils.el("collist");
+            var btn  = utils.el(btnId);
+            if(list.selectedIndex == -1){ // If no column selected, exit.
+                alert("Please select a column for " + btn.value + ".");
+                return null;
+            }
+            // Select column.
+            utils.el(btnId.replace(/^btn_/i, "")).value = list.item(list.selectedIndex).value;
+            kmlcols[btnId.replace(/^btn_/i, "")]        = list.selectedIndex;
+        }
+
+        function test(){ // Test if go-ahead is right?
+            var csv = utils.el("csvfile");
+            if(csv.value == ""){
+                alert("Please select a CSV data file to convert.");
+                return false;
+            }
+            var kml = utils.el("kmlfile");
+            if(kml.value == ""){
+                alert("Please select a KML file to generate.");
+                return false;
+            }
+            if(!kml.value.match(/.kml$/i)) kml.value = kml.value + ".kml";
+            // Check if columns have been selected.
+            if(typeof kmlcols.name   == "undefined"){
+                alert("Please select the column for Name."     );
+                return false;
+            }
+            if(typeof kmlcols.lat    == "undefined"){
+                alert("Please select the column for Latitude." );
+                return false;
+            }
+            if(typeof kmlcols.lon    == "undefined"){
+                alert("Please select the column for Longitude.");
+                return false;
+            }
+            // if(typeof kmlcols.height == "undefined"){
+            //     alert("Please select the column for Height."   );
+            //     return false;
+            // }
+            // if(typeof kmlcols.eyealt == "undefined"){
+            //     alert("Please select the column for Eye Altitude."   );
+            //     return false;
+            // }
+            return true;
+        }
+    </script>
+</head>
+
+<body>
+<h1 id="title">CSV to KML</h1>
+
+<table>
+    <tr>
+        <td width="100">CSV File</td>
+        <td>:</td>
+        <td><input type="text" id="csvfile" /></td>
+        <td><input type="button" id="open" value="Browse" /></td>
+    </tr>
+    <tr>
+        <td>KML File</td>
+        <td>:</td>
+        <td><input type="text" id="kmlfile" /></td>
+        <td><input type="button" id="save" value="Browse" /></td>
+    </tr>
+    <tr>
+        <td style="vertical-align: top;">Columns</td>
+        <td style="vertical-align: top;">:</td>
+        <td><select id="collist" size="8"></select></td>
+        <td style="vertical-align: top;">
+            <input type="button" id="btn_name" value="Place Name" /><br />
+            <input type="button" id="btn_lat" value="Latitude (N)" /><br />
+            <input type="button" id="btn_lon" value="Longitude (E)" /><br />
+            <input type="button" id="btn_height" value="Height (m)" /><br />
+            <input type="button" id="btn_eyealt" value="Altitude (km)" />
+        </td>
+    </tr>
+    <tr>
+        <td>Place Name</td>
+        <td>:</td>
+        <td><input type="text" id="name" /></td>
+        <td class="noborder"></td>
+    </tr>
+    <tr>
+        <td>Latitude</td>
+        <td>:</td>
+        <td><input type="text" id="lat" /></td>
+        <td class="noborder"></td>
+    </tr>
+    <tr>
+        <td>Longitude</td>
+        <td>:</td>
+        <td><input type="text" id="lon" /></td>
+        <td class="noborder"></td>
+    </tr>
+    <tr>
+        <td>Height</td>
+        <td>:</td>
+        <td><input type="text" id="height" /></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>Eye Altitude</td>
+        <td>:</td>
+        <td><input type="text" id="eyealt" /></td>
+        <td><input type="button" id="process" value="Convert" /></td>
+    </tr>
+    <tr>
+        <td class="noborder"></td>
+        <td class="noborder"></td>
+        <td class="noborder">
+            <input type="checkbox" id="path" checked />Path
+            <input type="checkbox" id="distances" checked />Distances
+            <input type="checkbox" id="flatten" checked />Flatten
+            <input type="checkbox" id="attributes" checked />Attributes
+        </td>
+        <td class="noborder"></td>
+    </tr>
+</table>
+
+<div class="hidden">
+    <input type="file" id="file" accept=".csv" />
+    <input type="file" id="filesave" nwsaveas />
+</div>
+
+</body>
+</html>

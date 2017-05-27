@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KML Toolkit</title>
+    <link rel="stylesheet" type="text/css" href="data/app.css" />
+    <script type="text/javascript" src="data/utils.js"></script>
+    <script type="text/javascript">
+        // Used to load pages in IFRAME on click of links in navigation pane.
+        function linker(a){
+            var s = "data/" + a.innerHTML.replace(/\s+/g, "_").toLowerCase() + ".html";
+            try{ utils.el("iframe").src = s; } catch(e){ alert("Missing Page: '" + s + "'"); }
+        }
+    </script>
+</head>
+
+<body>
+
+<h1 id="title">KML Toolkit</h1>
+
+<table id="main-table">
+<tr>
+    <td>
+        <div id="links">
+            <a href="javascript:void(0)" onclick="linker(this)">CSV to KML</a>
+            <a href="javascript:void(0)" onclick="linker(this)">KML to CSV</a>
+            <a href="javascript:void(0)" onclick="linker(this)">Merge KML</a>
+            <a href="javascript:void(0)" onclick="linker(this)">Update KML</a>
+        </div>
+    </td>
+    <td><iframe id="iframe" application="yes" height="470" width="600"></iframe></td>
+</tr>
+</table>
+
+<div id="footer">Developed &amp; designed by: <a href="mailto:virendrabajpai@bsf.gov.in">Virendra Bajpai</a>, <a href="mailto:ajitsingh2208@hotmail.com">Ajit Singh</a></div>
+
+<div id="debugger"></div>
+
+</body>
+</html

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update KML</title>
+    <link rel="stylesheet" type="text/css" href="page.css" />
+    <script type="text/javascript" src="utils.js"></script>
+    <script type="text/javascript">
+        // DOM's window load is used to associate functionality to elements.
+        window.addEventListener("load", function(){
+            utils.el("open").addEventListener("click", function(){ utils.el("file").click();     }, false); // File open
+            utils.el("save").addEventListener("click", function(){ utils.el("filesave").click(); }, false); // File save
+            utils.el("file").addEventListener("change", function(){ // On file open
+                utils.el("kmlin").value = utils.el("file").value
+                // Default KML name is appended with '_updated'
+                if(!utils.el("kmlout").value)
+                    utils.el("kmlout").value = utils.el("kmlin").value.replace(/\.kml$/i, "_updated.kml");
+            }, false);
+            utils.el("filesave").addEventListener("change", function(){ // On file save
+                utils.el("kmlout").value = utils.el("filesave").value
+                if(!utils.el("kmlout").value.match(/\.kml$/i)) utils.el("kmlout").value += ".kml";
+            }, false);
+            utils.el("process").addEventListener("click", function(){ // Actual update.
+                if(test()){ // Checks for true before actual update. Reuses functions.
+                    var lines = utils.KMLToArray(utils.el("kmlin").value);
+                    var kml   = utils.ArrayToKML(
+                        lines,
+                        utils.ReadKMLCols(utils.el("kmlin").value),
+                        utils.el("path").checked,
+                        utils.el("distances").checked,
+                        utils.el("flatten").checked,
+                        utils.el("attributes").checked
+                    );
+                    utils.SerializeKML(kml, utils.el("kmlout").value);
+                }
+            }, false);
+        }, false);
+
+        function test(){ // Test if go-ahead is right?
+            var kmlin  = utils.el("kmlin");
+            var kmlout = utils.el("kmlout");
+            if(kmlin.value == ""){
+                alert("Please select a kml file to updated paths and attributes.");
+                return false;
+            }
+            // Check if a file for output is selected
+            if(kmlout.value == ""){
+                alert("Please select a file to generate updated kml.");
+                return false;
+            }
+            // Check if selected output file is having an extension of kml file, i.e., .kml.
+            // If .kml is not present, add the required extension.
+            if(!kmlout.value.match(/\.kml$/)) kmlout.value += ".kml";
+            return true;
+        }
+    </script>
+</head>
+
+<body>
+<h1 id="title">Update KML: Paths &amp; Attributes</h1>
+
+<table>
+    <tr>
+        <td width="100">KML Input</td>
+        <td>:</td>
+        <td><input type="text" size="40" id="kmlin" /></td>
+        <td><input type="button" id="open" value="Browse" class="stitched" /></td>
+    </tr>
+    <tr>
+        <td>KML Output</td>
+        <td>:</td>
+        <td><input type="text" size="40" id="kmlout" /></td>
+        <td><input type="button" id="save" value="Browse" class="stitched" /></td>
+    </tr>
+    <tr>
+        <td class="noborder"></td>
+        <td class="noborder"></td>
+        <td class="noborder">
+            <input type="checkbox" id="path" checked />Path
+            <input type="checkbox" id="distances" checked />Distances
+            <input type="checkbox" id="flatten" checked />Flatten
+            <input type="checkbox" id="attributes" checked />Attributes
+        </td>
+        <td class="noborder"><input type="button" id="process" value="Update" class="stitched" /></td>
+    </tr>
+</table>
+<p>
+
+<div class="hidden">
+    <input type="file" id="file" accept=".kml" />
+    <input type="file" id="filesave" nwsaveas />
+</div>
+
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Merge KML: Paths and Points</title>
+    <link rel="stylesheet" type="text/css" href="page.css" />
+    <script type="text/javascript" src="utils.js"></script>
+    <script type="text/javascript">
+        // DOM's window load is used to associate functionality to elements.
+        window.addEventListener("load", function(){
+            utils.el("loadfolder").addEventListener("click", function(){ // Selects a folder to load
+                var x = utils.el("loadfolder-browse");
+                    x.value = "";
+                    x.click();
+            }, false);
+            utils.el("loadfolder-browse").addEventListener("change", function(){ // Loads all files in a folder
+                var folders = [];
+                var files   = [];
+                utils.DirectoryTree(utils.el("loadfolder-browse").value, folders, files);
+                files.sort();
+                addfiles(files);
+            }, false);
+            utils.el("loadlist").addEventListener("click", function(){ // Loads a list of files already saved.
+                var x = utils.el("loadlist-browse");
+                    x.value = "";
+                    x.click();
+            }, false);
+            utils.el("loadlist-browse").addEventListener("change", function(){ // Selects a list of files to load.
+                var file = utils.el("loadlist-browse");
+                var lines = utils.read(file.value);
+                if(lines) lines = lines.split(/\r\n|\r|\n/g);
+                console.log(lines);
+                addfiles(lines);
+            }, false);
+            utils.el("addfile").addEventListener("click", function(){ // Select a single file to load.
+                var x = utils.el("addfile-browse");
+                    x.value = "";
+                    x.click();
+            }, false);
+            utils.el("addfile-browse").addEventListener("change", function(){ // Adds selected file to list.
+                var file = utils.el("addfile-browse");
+                var found = false;
+                var list = utils.el("kmllist");
+                for(var i = list.length - 1; i >= 0; i--){
+                    if(list.item(i).value == file.value){
+                        alert("File '" + file.value + "' already added at position " + (i + 1));
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found) list.appendChild(listoption(file.value));
+            }, false);
+            utils.el("removefile").addEventListener("click", removefile, false); // Remove a file
+            utils.el("moveup").addEventListener("click", moveup, false);         // Moveup
+            utils.el("movedown").addEventListener("click", movedown, false);     // Movedown
+            utils.el("kmllist").addEventListener("keydown", function(event){     // Key handling
+                if(event.ctrlKey){
+                    switch(event.keyCode){
+                        case 38: moveup();     event.preventDefault(); break; // Up arrow
+                        case 40: movedown();   event.preventDefault(); break; // Down arrow
+                        case 46: removefile(); event.preventDefault(); break; // Del
+                    }
+                }
+            }, false);
+            utils.el("savelist").addEventListener("click", function(){ // Save a loaded list
+                var x = utils.el("savelist-browse");
+                    x.value = "";
+                    x.click();
+            }, false);
+            utils.el("savelist-browse").addEventListener("change", function(){ // Select a saved list
+                var file = utils.el("listfile");
+                    file.value = utils.el("savelist-browse").value;
+                if(!file.value.match(/\.list$/)) file.value += ".list";
+            }, false);
+            utils.el("save").addEventListener("click", function(){
+                var file = utils.el("listfile");
+                if(file.value == ""){
+                    alert("Please select a file to save the list.");
+                    return null;
+                }
+                var list = utils.el("kmllist");
+                var listcontents = "";
+                for(var i = 0; i < list.length; i++){
+                    listcontents += list.item(i).value + "\r\n";
+                }
+                utils.write(file.value, listcontents);
+                alert("List saved!");
+            }, false);
+            utils.el("kmlsave").addEventListener("click", function(){
+                var x = utils.el("mergedkml-browse");
+                    x.value = "";
+                    x.click();
+            }, false);
+            utils.el("mergedkml-browse").addEventListener("change", function(){
+                var file = utils.el("mergedkml");
+                    file.value = utils.el("mergedkml-browse").value;
+                if(!file.value.match(/\.kml$/)) file.value += ".kml";
+            }, false);
+            utils.el("process").addEventListener("click", function(){
+                if(test()){
+                    var list    = utils.el("kmllist");
+                    var lines   = [];
+                    var kmlcols = utils.ReadKMLCols(list.item(0).value);
+                    for(var i = 0; i < list.length; i++){
+                        var tlines = utils.KMLToArray(list.item(i).value);
+                        if(i == 0) lines.push(tlines[0]);
+                        for(var j = 1; j < tlines.length; j++){
+                            lines.push(tlines[j]);
+                        }
+                    }
+                    console.log(lines);
+                    var kml = utils.ArrayToKML(
+                        lines,
+                        kmlcols,
+                        utils.el("path").checked,
+                        utils.el("distances").checked,
+                        utils.el("flatten").checked,
+                        utils.el("attributes").checked
+                    );
+                    utils.SerializeKML(kml, utils.el("mergedkml").value);
+                    utils.open(utils.el("mergedkml").value);
+                };
+            }, false);
+        }, false);
+
+        function addfiles(files){
+            var list = utils.el("kmllist");
+            for(var i = 0; i < files.length; i++){
+                if(files[i].match(/\.kml$/i)){ // Use only KML files.
+                    list.appendChild(listoption(files[i]));
+                }
+            }
+        }
+
+        function removefile(){
+            var list = utils.el("kmllist");
+            if(list.selectedIndex == -1){
+                alert("Please select an entry of KML file to remove from the list.");
+                return null;
+            }
+            var sel = list.selectedIndex;
+            list.remove(list.selectedIndex);
+            if(sel >= list.length) sel = list.length - 1;
+            list.selectedIndex = sel;
+        }
+
+        function moveup(){
+            var list = utils.el("kmllist");
+            if(list.selectedIndex == -1){
+                alert("Please select an entry of KML file to move up in the list.");
+                return null;
+            }
+            var index = list.selectedIndex;
+            if(index > 0){
+                var option = list.item(index);
+                list.remove(index);
+                list.add(option, index - 1);
+            }
+        }
+
+        function movedown(){
+            var list = utils.el("kmllist");
+            if(list.selectedIndex == -1){
+                alert("Please select an entry of KML file to move down in the list.");
+                return null;
+            }
+            var index = list.selectedIndex;
+            if(index < list.length - 1){
+                var option = list.item(index);
+                list.remove(index);
+                list.add(option, index + 1);
+            }
+        }
+
+        function listoption(contents){
+            var option = utils.tag("option");
+                option.value = contents;
+            if(contents.length > 55){
+                var left  = contents.substring(0, 7);
+                var right = contents.substring(contents.length - 45);
+                option.text = left + "..." + right;
+            } else option.text = contents;
+            return option;
+        }
+
+        function test(){
+            var list = utils.el("kmllist");
+            if(list.length < 2){
+                alert("Please select at least two kml files to merge.");
+                return false;
+            }
+            var mergedkml = utils.el("mergedkml");
+            if(mergedkml.value === ""){
+                alert("Please select a kml file for merge output.");
+                return false;
+            }
+            return true;
+        }
+    </script>
+</head>
+
+<body>
+<h1 id="title">Merge KML: Paths and Points</h1>
+
+<table>
+    <tr>
+        <td style="vertical-align: top;" width="100"><b>KML List</b></td>
+        <td style="vertical-align: top;">:</td>
+        <td><select id="kmllist" size="11"></select></td>
+        <td style="vertical-align: top; text-align: right;">
+            <input type="button" id="loadfolder" value="Load Folder" class="stitched" /><br />
+            <div style="height: 5px;"></div>
+            <input type="button" id="loadlist"   value="Load List"   class="stitched" /><br />
+            <div style="height: 5px;"></div>
+            <input type="button" id="addfile"    value="Add"         class="stitched" /><br />
+            <input type="button" id="removefile" value="Remove"      class="stitched" title="Ctrl+Del" /><br />
+            <input type="button" id="moveup"     value="Move Up"     class="stitched" title="Ctrl+Up" /><br />
+            <input type="button" id="movedown"   value="Move Down"   class="stitched" title="Ctrl+Down" />
+        </td>
+    </tr>
+    <tr>
+        <td style="vertical-align: top;"><b>Save List</b></td>
+        <td style="vertical-align: top;">:</td>
+        <td style="vertical-align: top;"><input type="text" size="40" id="listfile" /></td>
+        <td style="vertical-align: top;">
+            <input type="button" id="savelist" value="Browse" class="stitched" /><br />
+            <input type="button" id="save" value="Save List" class="stitched" />
+        </td>
+    </tr>
+    <tr>
+        <td><b>Merged KML</b></td>
+        <td>:</td>
+        <td><input type="text" size="40" id="mergedkml" /></td>
+        <td><input type="button" id="kmlsave" value="Browse" class="stitched" /></td>
+    </tr>
+    <tr>
+        <td class="noborder"></td>
+        <td class="noborder"></td>
+        <td class="noborder">
+            <input type="checkbox" id="path" checked />Path
+            <input type="checkbox" id="distances" checked />Distances
+            <input type="checkbox" id="flatten" checked />Flatten
+            <input type="checkbox" id="attributes" checked />Attributes
+        </td>
+        <td class="noborder"><input type="button" id="process" value="Merge" class="stitched" /></td>
+    </tr>
+</table>
+
+<div class="hidden">
+    <input type="file" id="loadfolder-browse" nwdirectory />
+    <input type="file" id="loadlist-browse" accept=".list" />
+    <input type="file" id="addfile-browse" accept=".kml" />
+    <input type="file" id="savelist-browse" nwsaveas />
+    <input type="file" id="mergedkml-browse" nwsaveas />
+</div>
+
+</body>
+</html>

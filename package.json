@@ -1,0 +1,18 @@
+{
+    "main": "app.html",
+    "name": "kml-toolkit",
+    "version": "1.0",
+    "description": "KML Toolkit",
+    "window": {
+        "title"    : "KML Toolkit",
+        "icon"     : "data/kml.png",
+        "toolbar"  : false,
+        "width"    : 815,
+        "height"   : 560,
+        "resizable": false,
+        "position" : "center"
+    },
+    "webkit": {
+        "plugin": true
+    }
+}
